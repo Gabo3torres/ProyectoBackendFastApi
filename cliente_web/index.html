@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POS — Cliente Web</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #222; }
+
+    header {
+      background: #1a1a2e; color: #fff; padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    header h1 { font-size: 1.2rem; letter-spacing: 1px; }
+    #usuario-info { font-size: 0.85rem; opacity: 0.8; }
+
+    /* LOGIN */
+    #login-view {
+      max-width: 380px; margin: 80px auto; background: #fff;
+      border-radius: 10px; padding: 36px; box-shadow: 0 4px 20px rgba(0,0,0,.1);
+    }
+    #login-view h2 { margin-bottom: 24px; color: #1a1a2e; }
+
+    /* TABS */
+    #app-view { display: none; padding: 24px; max-width: 1000px; margin: 0 auto; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tab-btn {
+      padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer;
+      background: #dde; color: #333; font-size: 0.9rem; transition: background .2s;
+    }
+    .tab-btn.active { background: #1a1a2e; color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* CARDS */
+    .card {
+      background: #fff; border-radius: 10px; padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07); margin-bottom: 20px;
+    }
+    .card h3 { margin-bottom: 14px; color: #1a1a2e; font-size: 1rem; }
+
+    /* FORM */
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    input, select {
+      padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px;
+      font-size: 0.9rem; flex: 1; min-width: 140px;
+    }
+    button {
+      padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: 0.9rem; transition: opacity .2s;
+    }
+    button:hover { opacity: 0.85; }
+    .btn-primary { background: #1a1a2e; color: #fff; }
+    .btn-danger  { background: #c0392b; color: #fff; }
+    .btn-success { background: #27ae60; color: #fff; }
+    .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th { background: #f5f5f5; padding: 10px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0; }
+    td { padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    tr:hover td { background: #fafafa; }
+
+    /* BADGE */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;
+    }
+    .badge-ok  { background: #d4edda; color: #155724; }
+    .badge-off { background: #f8d7da; color: #721c24; }
+
+    /* ALERT */
+    .alert {
+      padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 0.88rem; display: none;
+    }
+    .alert-error   { background: #fde8e8; color: #b71c1c; border-left: 4px solid #c0392b; }
+    .alert-success { background: #e8f5e9; color: #1b5e20; border-left: 4px solid #27ae60; }
+    .alert.show { display: block; }
+
+    /* PAGINATION */
+    .pagination { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+    .page-info { font-size: 0.85rem; color: #666; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>POS — Panel de Administración</h1>
+  <span id="usuario-info">No autenticado</span>
+</header>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="login-view">
+  <h2>Iniciar sesión</h2>
+  <div id="login-alert" class="alert alert-error"></div>
+  <div class="form-row">
+    <input id="login-email" type="email" placeholder="Email" value="admin@pos.com" />
+  </div>
+  <div class="form-row">
+    <input id="login-password" type="password" placeholder="Contraseña" value="admin1234" />
+  </div>
+  <div class="form-row" style="margin-top:8px">
+    <button class="btn-primary" onclick="login()" style="width:100%">Ingresar</button>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app-view">
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="cambiarTab('productos')">Productos</button>
+    <button class="tab-btn" onclick="cambiarTab('clientes')">Clientes</button>
+    <button class="tab-btn" onclick="cambiarTab('ventas')">Ventas</button>
+    <button class="tab-btn btn-danger btn-sm" onclick="logout()" style="margin-left:auto">Cerrar sesión</button>
+  </div>
+
+  <!-- ── PRODUCTOS ── -->
+  <div id="tab-productos" class="tab-panel active">
+
+    <div class="card">
+      <h3>Nuevo producto</h3>
+      <div id="prod-alert" class="alert"></div>
+      <div class="form-row">
+        <input id="prod-nombre"      placeholder="Nombre" />
+        <input id="prod-descripcion" placeholder="Descripción (opcional)" />
+      </div>
+      <div class="form-row">
+        <input id="prod-precio" type="number" placeholder="Precio" min="0" />
+        <input id="prod-stock"  type="number" placeholder="Stock"  min="0" />
+        <button class="btn-success" onclick="crearProducto()">Agregar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Lista de productos</h3>
+      <div class="form-row" style="margin-bottom:14px">
+        <select id="prod-limit" onchange="cargarProductos(1)">
+          <option value="5">5 por página</option>
+          <option value="10" selected>10 por página</option>
+          <option value="20">20 por página</option>
+        </select>
+        <button class="btn-primary btn-sm" onclick="cargarProductos(1)">Actualizar</button>
+      </div>
+      <table>
+        <thead><tr><th>ID</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="prod-tbody"><tr><td colspan="6" style="color:#999">Cargando...</td></tr></tbody>
+      </table>
+      <div class="pagination">
+        <button class="btn-primary btn-sm" id="prod-prev" onclick="cambiarPagProd(-1)" disabled>← Anterior</button>
+        <span class="page-info" id="prod-pag-info"></span>
+        <button class="btn-primary btn-sm" id="prod-next" onclick="cambiarPagProd(1)">Siguiente →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CLIENTES ── -->
+  <div id="tab-clientes" class="tab-panel">
+
+    <div class="card">
+      <h3>Nuevo cliente</h3>
+      <div id="cli-alert" class="alert"></div>
+      <div class="form-row">
+        <input id="cli-nombre"    placeholder="Nombre *" />
+        <input id="cli-apellido"  placeholder="Apellido *" />
+        <input id="cli-email"     type="email" placeholder="Email (opcional)" />
+      </div>
+      <div class="form-row">
+        <input id="cli-telefono"  placeholder="Teléfono" />
+        <input id="cli-direccion" placeholder="Dirección" />
+        <button class="btn-success" onclick="crearCliente()">Agregar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Lista de clientes</h3>
+      <button class="btn-primary btn-sm" onclick="cargarClientes()" style="margin-bottom:14px">Actualizar</button>
+      <table>
+        <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="cli-tbody"><tr><td colspan="6" style="color:#999">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── VENTAS ── -->
+  <div id="tab-ventas" class="tab-panel">
+
+    <div class="card">
+      <h3>Registrar venta</h3>
+      <div id="venta-alert" class="alert"></div>
+      <div class="form-row">
+        <select id="venta-producto">
+          <option value="">Seleccionar producto...</option>
+        </select>
+        <input id="venta-cantidad" type="number" placeholder="Cantidad" min="1" value="1" style="max-width:100px" />
+        <button class="btn-success" onclick="registrarVenta()">Registrar venta</button>
+      </div>
+      <p style="font-size:0.8rem;color:#888;margin-top:6px">El cliente es opcional (venta de mostrador permitida)</p>
+    </div>
+
+    <div class="card">
+      <h3>Historial de ventas</h3>
+      <button class="btn-primary btn-sm" onclick="cargarVentas()" style="margin-bottom:14px">Actualizar</button>
+      <table>
+        <thead><tr><th>ID</th><th>Fecha</th><th>Total</th><th>Productos</th><th>Observación</th></tr></thead>
+        <tbody id="venta-tbody"><tr><td colspan="5" style="color:#999">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /app-view -->
+
+<script>
+  // ══════════════════════════════════════════════════
+  //  CONFIGURACIÓN
+  // ══════════════════════════════════════════════════
+  const BASE = 'http://127.0.0.1:8000';
+  let token = '';
+  let prodPagActual = 1;
+
+  // ══════════════════════════════════════════════════
+  //  UTILIDADES
+  // ══════════════════════════════════════════════════
+
+  // Construye los headers con el token JWT para cada request autenticado.
+  function headers() {
+    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+  }
+
+  // Muestra un mensaje de alerta dentro de un elemento dado.
+  function mostrarAlerta(id, msg, tipo = 'error') {
+    const el = document.getElementById(id);
+    el.className = `alert alert-${tipo} show`;
+    el.textContent = msg;
+    setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  // Formatea número como moneda local.
+  function moneda(n) {
+    return '$' + Number(n).toLocaleString('es-CO');
+  }
+
+  // ══════════════════════════════════════════════════
+  //  AUTENTICACIÓN
+  // ══════════════════════════════════════════════════
+
+  async function login() {
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    try {
+      const r = await fetch(`${BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        mostrarAlerta('login-alert', data.detail || 'Error al iniciar sesión');
+        return;
+      }
+      // Guarda el token y muestra el panel principal.
+      token = data.data.access_token;
+      const u = data.data.usuario;
+      document.getElementById('usuario-info').textContent = `${u.nombre} ${u.apellido} · ${u.rol}`;
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('app-view').style.display   = 'block';
+      // Carga datos iniciales de las tres secciones.
+      cargarProductos(1);
+      cargarClientes();
+      cargarVentas();
+    } catch {
+      mostrarAlerta('login-alert', 'No se pudo conectar con el servidor. ¿Está corriendo?');
+    }
+  }
+
+  function logout() {
+    token = '';
+    document.getElementById('login-view').style.display = 'block';
+    document.getElementById('app-view').style.display   = 'none';
+    document.getElementById('usuario-info').textContent = 'No autenticado';
+  }
+
+  // Enviar con Enter en el campo de contraseña.
+  document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+  });
+
+  // ══════════════════════════════════════════════════
+  //  NAVEGACIÓN POR TABS
+  // ══════════════════════════════════════════════════
+
+  function cambiarTab(nombre) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tab-${nombre}`).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  // ══════════════════════════════════════════════════
+  //  PRODUCTOS
+  // ══════════════════════════════════════════════════
+
+  async function cargarProductos(page = prodPagActual) {
+    prodPagActual = page;
+    const limit = document.getElementById('prod-limit').value;
+    try {
+      const r = await fetch(`${BASE}/productos/?page=${page}&limit=${limit}`, { headers: headers() });
+      const data = await r.json();
+      if (!r.ok) return;
+
+      // Actualiza la tabla
+      const tbody = document.getElementById('prod-tbody');
+      tbody.innerHTML = data.data.length === 0
+        ? '<tr><td colspan="6" style="color:#999">Sin productos activos</td></tr>'
+        : data.data.map(p => `
+          <tr>
+            <td>${p.id}</td>
+            <td>${p.nombre}${p.descripcion ? `<br><small style="color:#888">${p.descripcion}</small>` : ''}</td>
+            <td>${moneda(p.precio)}</td>
+            <td>${p.stock}</td>
+            <td><span class="badge ${p.activo ? 'badge-ok' : 'badge-off'}">${p.activo ? 'Activo' : 'Inactivo'}</span></td>
+            <td>
+              <button class="btn-danger btn-sm" onclick="eliminarProducto(${p.id})">Eliminar</button>
+            </td>
+          </tr>`).join('');
+
+      // Actualiza paginación
+      document.getElementById('prod-pag-info').textContent = `Página ${data.page} de ${data.pages} (${data.total} total)`;
+      document.getElementById('prod-prev').disabled = page <= 1;
+      document.getElementById('prod-next').disabled = page >= data.pages;
+
+      // Actualiza el select de ventas con los productos activos
+      actualizarSelectProductos(data.data.filter(p => p.activo && p.stock > 0));
+    } catch { /* silencioso */ }
+  }
+
+  function cambiarPagProd(delta) {
+    cargarProductos(prodPagActual + delta);
+  }
+
+  // Sincroniza el select de ventas con los productos disponibles.
+  function actualizarSelectProductos(productos) {
+    const sel = document.getElementById('venta-producto');
+    const valorActual = sel.value;
+    sel.innerHTML = '<option value="">Seleccionar producto...</option>' +
+      productos.map(p => `<option value="${p.id}">${p.nombre} — ${moneda(p.precio)} (stock: ${p.stock})</option>`).join('');
+    sel.value = valorActual;
+  }
+
+  async function crearProducto() {
+    const nombre      = document.getElementById('prod-nombre').value.trim();
+    const descripcion = document.getElementById('prod-descripcion').value.trim();
+    const precio      = parseFloat(document.getElementById('prod-precio').value);
+    const stock       = parseInt(document.getElementById('prod-stock').value);
+
+    if (!nombre || isNaN(precio) || precio <= 0) {
+      mostrarAlerta('prod-alert', 'Nombre y precio son obligatorios y precio debe ser mayor a 0');
+      return;
+    }
+    try {
+      const r = await fetch(`${BASE}/productos/`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ nombre, descripcion: descripcion || undefined, precio, stock: stock || 0 })
+      });
+      const data = await r.json();
+      if (!r.ok) { mostrarAlerta('prod-alert', data.detail || 'Error al crear producto'); return; }
+      mostrarAlerta('prod-alert', `Producto "${data.data.nombre}" creado exitosamente`, 'success');
+      // Limpia el formulario y recarga la tabla.
+      ['prod-nombre','prod-descripcion','prod-precio','prod-stock'].forEach(id => document.getElementById(id).value = '');
+      cargarProductos(1);
+    } catch { mostrarAlerta('prod-alert', 'Error de conexión'); }
+  }
+
+  async function eliminarProducto(id) {
+    if (!confirm('¿Desactivar este producto?')) return;
+    try {
+      const r = await fetch(`${BASE}/productos/${id}`, { method: 'DELETE', headers: headers() });
+      if (r.ok) cargarProductos(prodPagActual);
+      else {
+        const data = await r.json();
+        alert(data.detail || 'No se pudo eliminar');
+      }
+    } catch { /* silencioso */ }
+  }
+
+  // ══════════════════════════════════════════════════
+  //  CLIENTES
+  // ══════════════════════════════════════════════════
+
+  async function cargarClientes() {
+    try {
+      const r = await fetch(`${BASE}/clientes/`, { headers: headers() });
+      const data = await r.json();
+      if (!r.ok) return;
+      const tbody = document.getElementById('cli-tbody');
+      tbody.innerHTML = data.data.length === 0
+        ? '<tr><td colspan="6" style="color:#999">Sin clientes registrados</td></tr>'
+        : data.data.map(c => `
+          <tr>
+            <td>${c.id}</td>
+            <td>${c.nombre} ${c.apellido}</td>
+            <td>${c.email || '—'}</td>
+            <td>${c.telefono || '—'}</td>
+            <td><span class="badge ${c.activo ? 'badge-ok' : 'badge-off'}">${c.activo ? 'Activo' : 'Inactivo'}</span></td>
+            <td>
+              <button class="btn-danger btn-sm" onclick="eliminarCliente(${c.id})">Eliminar</button>
+            </td>
+          </tr>`).join('');
+    } catch { /* silencioso */ }
+  }
+
+  async function crearCliente() {
+    const nombre    = document.getElementById('cli-nombre').value.trim();
+    const apellido  = document.getElementById('cli-apellido').value.trim();
+    const email     = document.getElementById('cli-email').value.trim();
+    const telefono  = document.getElementById('cli-telefono').value.trim();
+    const direccion = document.getElementById('cli-direccion').value.trim();
+
+    if (!nombre || !apellido) {
+      mostrarAlerta('cli-alert', 'Nombre y apellido son obligatorios');
+      return;
+    }
+    try {
+      const body = { nombre, apellido };
+      if (email)     body.email     = email;
+      if (telefono)  body.telefono  = telefono;
+      if (direccion) body.direccion = direccion;
+
+      const r = await fetch(`${BASE}/clientes/`, {
+        method: 'POST', headers: headers(), body: JSON.stringify(body)
+      });
+      const data = await r.json();
+      if (!r.ok) { mostrarAlerta('cli-alert', data.detail || 'Error al crear cliente'); return; }
+      mostrarAlerta('cli-alert', `Cliente "${nombre} ${apellido}" creado exitosamente`, 'success');
+      ['cli-nombre','cli-apellido','cli-email','cli-telefono','cli-direccion'].forEach(id => document.getElementById(id).value = '');
+      cargarClientes();
+    } catch { mostrarAlerta('cli-alert', 'Error de conexión'); }
+  }
+
+  async function eliminarCliente(id) {
+    if (!confirm('¿Desactivar este cliente?')) return;
+    try {
+      const r = await fetch(`${BASE}/clientes/${id}`, { method: 'DELETE', headers: headers() });
+      if (r.ok) cargarClientes();
+      else { const d = await r.json(); alert(d.detail || 'No tienes permiso (requiere rol admin)'); }
+    } catch { /* silencioso */ }
+  }
+
+  // ══════════════════════════════════════════════════
+  //  VENTAS
+  // ══════════════════════════════════════════════════
+
+  async function cargarVentas() {
+    try {
+      const r = await fetch(`${BASE}/ventas/`, { headers: headers() });
+      const data = await r.json();
+      if (!r.ok) return;
+      const tbody = document.getElementById('venta-tbody');
+      tbody.innerHTML = data.data.length === 0
+        ? '<tr><td colspan="5" style="color:#999">Sin ventas registradas</td></tr>'
+        : data.data.map(v => {
+            const productos = v.detalles.map(d => `${d.cantidad}u × ${d.precio_unitario}`).join(', ');
+            const fecha = new Date(v.fecha).toLocaleString('es-CO');
+            return `<tr>
+              <td>${v.id}</td>
+              <td style="font-size:0.8rem">${fecha}</td>
+              <td><strong>${moneda(v.total)}</strong></td>
+              <td style="font-size:0.8rem">${productos}</td>
+              <td>${v.observacion || '—'}</td>
+            </tr>`;
+          }).join('');
+    } catch { /* silencioso */ }
+  }
+
+  async function registrarVenta() {
+    const productoId = document.getElementById('venta-producto').value;
+    const cantidad   = parseInt(document.getElementById('venta-cantidad').value);
+
+    if (!productoId) { mostrarAlerta('venta-alert', 'Selecciona un producto'); return; }
+    if (!cantidad || cantidad < 1) { mostrarAlerta('venta-alert', 'La cantidad debe ser mayor a 0'); return; }
+
+    try {
+      const r = await fetch(`${BASE}/ventas/`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ items: [{ producto_id: parseInt(productoId), cantidad }] })
+      });
+      const data = await r.json();
+      if (!r.ok) { mostrarAlerta('venta-alert', data.detail || 'Error al registrar venta'); return; }
+      mostrarAlerta('venta-alert', `Venta registrada. Total: ${moneda(data.data.total)}`, 'success');
+      document.getElementById('venta-cantidad').value = 1;
+      // Recarga ventas y productos (para ver el stock actualizado).
+      cargarVentas();
+      cargarProductos(prodPagActual);
+    } catch { mostrarAlerta('venta-alert', 'Error de conexión'); }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,812 @@
+{
+  "info": {
+    "name": "POS Backend API",
+    "description": "Colección completa de pruebas de integración para el sistema de Punto de Venta.\nCubre: autenticación, CRUD de clientes, productos y ventas, validación de roles y seguridad.\n\nINSTRUCCIONES:\n1. Importar este archivo en Postman (File > Import)\n2. Seleccionar el environment 'POS Local'\n3. Ejecutar primero la carpeta 'Auth' para obtener el token automáticamente\n4. El token se guarda en la variable {{token}} y se usa en el resto de requests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000", "type": "string" },
+    { "key": "token",    "value": "", "type": "string" },
+    { "key": "cliente_id", "value": "", "type": "string" },
+    { "key": "producto_id", "value": "", "type": "string" },
+    { "key": "venta_id",   "value": "", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "1. Autenticación",
+      "description": "Registro y login de usuarios. El token JWT se guarda automáticamente en {{token}}.",
+      "item": [
+        {
+          "name": "Registrar usuario admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Creado', () => pm.response.to.have.status(201));",
+                  "pm.test('Respuesta tiene success=true', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Admin\",\n  \"apellido\": \"Test\",\n  \"email\": \"admin@pos.com\",\n  \"password\": \"admin1234\",\n  \"rol\": \"admin\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Registrar usuario cajero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Creado', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Cajero\",\n  \"apellido\": \"Test\",\n  \"email\": \"cajero@pos.com\",\n  \"password\": \"cajero1234\",\n  \"rol\": \"cajero\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login correcto → guarda token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta tiene access_token', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data).to.have.property('access_token');",
+                  "    // Guarda el token para todos los requests siguientes",
+                  "    pm.collectionVariables.set('token', body.data.access_token);",
+                  "});",
+                  "pm.test('Token no está vacío', () => {",
+                  "    pm.expect(pm.collectionVariables.get('token')).to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@pos.com\",\n  \"password\": \"admin1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login con credenciales incorrectas → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 - No autorizado', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensaje de error correcto', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.detail).to.include('Credenciales');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@pos.com\",\n  \"password\": \"contrasena_incorrecta\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Registro con email duplicado → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 - Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Mensaje de email duplicado', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.detail).to.include('email');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Duplicado\",\n  \"apellido\": \"Test\",\n  \"email\": \"admin@pos.com\",\n  \"password\": \"1234\"\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "2. Clientes",
+      "description": "CRUD completo de clientes. Requiere token JWT. Solo admin puede eliminar.",
+      "item": [
+        {
+          "name": "Crear cliente → guarda ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Creado', () => pm.response.to.have.status(201));",
+                  "pm.test('Respuesta tiene id', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data).to.have.property('id');",
+                  "    pm.collectionVariables.set('cliente_id', body.data.id);",
+                  "});",
+                  "pm.test('Nombre coincide', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data.nombre).to.equal('María');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/clientes/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"María\",\n  \"apellido\": \"García\",\n  \"email\": \"maria@ejemplo.com\",\n  \"telefono\": \"300-1234\",\n  \"direccion\": \"Calle 10 #5-20\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear cliente con email duplicado → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 - Email duplicado', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/clientes/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Otro\",\n  \"apellido\": \"Usuario\",\n  \"email\": \"maria@ejemplo.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar clientes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Data es un array', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data).to.be.an('array');",
+                  "});",
+                  "pm.test('Respuesta tiene links HATEOAS', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.links).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/clientes/"
+          }
+        },
+        {
+          "name": "Obtener cliente por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - OK', () => pm.response.to.have.status(200));",
+                  "pm.test('ID coincide', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(String(body.data.id)).to.equal(pm.collectionVariables.get('cliente_id'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/clientes/{{cliente_id}}"
+          }
+        },
+        {
+          "name": "Obtener cliente inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 - No encontrado', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/clientes/99999"
+          }
+        },
+        {
+          "name": "Actualizar cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Telefono actualizado', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data.telefono).to.equal('310-9999');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/clientes/{{cliente_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"310-9999\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar cliente (solo admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Soft delete exitoso', () => pm.response.to.have.status(200));",
+                  "pm.test('Mensaje de desactivado', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.message).to.include('desactivado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/clientes/{{cliente_id}}"
+          }
+        },
+        {
+          "name": "Acceso sin token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 - Sin autenticación', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/clientes/"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "3. Productos",
+      "description": "CRUD de productos con paginación. Crear/editar/eliminar requiere rol admin.",
+      "item": [
+        {
+          "name": "Crear producto (admin) → guarda ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Creado', () => pm.response.to.have.status(201));",
+                  "pm.test('Guarda ID del producto', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data).to.have.property('id');",
+                  "    pm.collectionVariables.set('producto_id', body.data.id);",
+                  "});",
+                  "pm.test('Stock inicial correcto', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data.stock).to.equal(50);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/productos/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Café molido 500g\",\n  \"descripcion\": \"Café premium de origen colombiano\",\n  \"precio\": 12500,\n  \"stock\": 50\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar productos paginados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta tiene campos de paginación', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('total');",
+                  "    pm.expect(body).to.have.property('page');",
+                  "    pm.expect(body).to.have.property('pages');",
+                  "    pm.expect(body).to.have.property('limit');",
+                  "});",
+                  "pm.test('Data es array', () => {",
+                  "    pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/productos/?page=1&limit=5",
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener producto por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Producto tiene precio mayor a 0', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data.precio).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/productos/{{producto_id}}"
+          }
+        },
+        {
+          "name": "Actualizar producto (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Precio actualizado', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data.precio).to.equal(13000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/productos/{{producto_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precio\": 13000\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear producto con rol cajero → 403",
+          "event": [
+            {
+              "listen": "pre-request",
+              "script": {
+                "exec": [
+                  "// Primero hace login como cajero y guarda el token temporalmente",
+                  "pm.sendRequest({",
+                  "    url: pm.collectionVariables.get('base_url') + '/auth/login',",
+                  "    method: 'POST',",
+                  "    header: { 'Content-Type': 'application/json' },",
+                  "    body: { mode: 'raw', raw: JSON.stringify({ email: 'cajero@pos.com', password: 'cajero1234' }) }",
+                  "}, (err, res) => {",
+                  "    if (res && res.json().data) {",
+                  "        pm.collectionVariables.set('token_cajero', res.json().data.access_token);",
+                  "    }",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 - Rol insuficiente', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_cajero}}" }
+            ],
+            "url": "{{base_url}}/productos/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Producto cajero\",\n  \"precio\": 100,\n  \"stock\": 5\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar producto (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Soft delete', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/productos/{{producto_id}}"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "4. Ventas",
+      "description": "Registro y consulta de ventas. Valida stock antes de persistir.",
+      "item": [
+        {
+          "name": "[Setup] Crear producto con stock para ventas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('producto_id', pm.response.json().data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/productos/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Producto para venta\",\n  \"precio\": 5000,\n  \"stock\": 20\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear venta exitosa → guarda ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 - Creado', () => pm.response.to.have.status(201));",
+                  "pm.test('Venta tiene total mayor a 0', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data.total).to.be.above(0);",
+                  "    pm.collectionVariables.set('venta_id', body.data.id);",
+                  "});",
+                  "pm.test('Venta tiene detalles', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data.detalles).to.be.an('array').with.lengthOf.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/ventas/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacion\": \"Venta de prueba\",\n  \"items\": [\n    { \"producto_id\": {{producto_id}}, \"cantidad\": 2 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear venta sin items → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 - Sin items', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/ventas/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear venta con stock insuficiente → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 - Stock insuficiente', () => pm.response.to.have.status(400));",
+                  "pm.test('Mensaje menciona stock', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.detail.toLowerCase()).to.include('stock');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/ventas/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"producto_id\": {{producto_id}}, \"cantidad\": 9999 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear venta con producto inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 - Producto no encontrado', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{base_url}}/ventas/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"producto_id\": 99999, \"cantidad\": 1 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar ventas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Data es array', () => {",
+                  "    pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/ventas/"
+          }
+        },
+        {
+          "name": "Obtener venta por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Venta tiene detalles', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data.detalles).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/ventas/{{venta_id}}"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "5. Seguridad",
+      "description": "Pruebas de seguridad: token inválido, token expirado, acceso sin auth, roles.",
+      "item": [
+        {
+          "name": "Token JWT inválido → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 - Token inválido', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer token.falso.invalido" }],
+            "url": "{{base_url}}/clientes/"
+          }
+        },
+        {
+          "name": "API Key correcta → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - Autenticado con API Key', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-API-Key", "value": "mi-api-key-secreta-2026" }],
+            "url": "{{base_url}}/clientes/"
+          }
+        },
+        {
+          "name": "API Key incorrecta → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 - API Key inválida', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-API-Key", "value": "clave-incorrecta" }],
+            "url": "{{base_url}}/clientes/"
+          }
+        },
+        {
+          "name": "Cajero intenta eliminar cliente → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 - Acceso denegado por rol', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_cajero}}" }],
+            "url": "{{base_url}}/clientes/1"
+          }
+        }
+      ]
+    }
+
+  ]
+}

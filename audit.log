@@ -1,0 +1,21 @@
+[2026-05-04 00:06:04] | REGISTRO   | usuarios     | usuario: admin_ops@mail.com             | id=1 rol=cajero
+[2026-05-04 00:06:04] | LOGIN_OK   | usuarios     | usuario: admin_ops@mail.com             | id=1 rol=cajero
+[2026-05-04 00:06:43] | REGISTRO   | usuarios     | usuario: admin@pos.com                  | id=2 rol=admin
+[2026-05-04 00:06:43] | LOGIN_OK   | usuarios     | usuario: admin@pos.com                  | id=2 rol=admin
+[2026-05-04 00:07:07] | LOGIN_OK   | usuarios     | usuario: admin@pos.com                  | id=2 rol=admin
+[2026-05-04 00:07:29] | REGISTRO   | usuarios     | usuario: admin2@pos.com                 | id=3 rol=admin
+[2026-05-04 00:07:29] | LOGIN_OK   | usuarios     | usuario: admin2@pos.com                 | id=3 rol=admin
+[2026-05-04 00:09:37] | REGISTRO   | usuarios     | usuario: admin_final@pos.com            | id=5 rol=admin
+[2026-05-04 00:09:37] | LOGIN_OK   | usuarios     | usuario: admin_final@pos.com            | id=5 rol=admin
+[2026-05-04 00:09:37] | CREAR      | productos    | usuario: admin_final@pos.com            | id=1 nombre='Cafe molido 500g'
+[2026-05-04 00:09:37] | CREAR      | productos    | usuario: admin_final@pos.com            | id=2 nombre='Azucar 1kg'
+[2026-05-04 00:09:37] | CREAR      | productos    | usuario: admin_final@pos.com            | id=3 nombre='Leche 1L'
+[2026-05-04 00:09:37] | CREAR      | clientes     | usuario: admin_final@pos.com            | id=1 nombre='Laura Gomez'
+[2026-05-04 00:09:37] | CREAR      | clientes     | usuario: admin_final@pos.com            | id=2 nombre='Carlos Herrera'
+[2026-05-04 00:09:37] | VENTA      | ventas       | usuario: admin_final@pos.com            | id=1 total=$28,500 productos=[Cafe molido 500g x2, Azucar 1kg x1]
+[2026-05-04 00:09:37] | VENTA      | ventas       | usuario: admin_final@pos.com            | id=2 total=$4,200 productos=[Leche 1L x1]
+[2026-05-04 00:09:37] | LOGIN_FAIL | usuarios     | usuario: hacker@mail.com                | credenciales incorrectas
+[2026-05-09 04:50:48] | LOGIN_OK   | usuarios     | usuario: admin@pos.com                  | id=2 rol=admin
+[2026-05-21 04:38:10] | LOGIN_OK   | usuarios     | usuario: admin@pos.com                  | id=2 rol=admin
+[2026-05-21 04:56:17] | LOGIN_OK   | usuarios     | usuario: admin@pos.com                  | id=2 rol=admin
+[2026-05-22 01:57:18] | LOGIN_OK   | usuarios     | usuario: admin@pos.com                  | id=2 rol=admin
